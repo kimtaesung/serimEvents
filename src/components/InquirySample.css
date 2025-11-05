@@ -1,0 +1,188 @@
+/* InquirySample Styles */
+/* 로컬 변수 정의 - :root 대신 .inquiry-form-container에 정의 */
+.inquiry-form-container {
+  --primary-color: #00ff99 !important;
+  --error-color: #ff0000 !important;
+  --text-primary: #ffffff !important;
+  --input-text-primary: #000000 !important;
+  --input-text-box-primary: #ffffff !important;
+  --text-secondary: #9ca3af !important;
+  --bg-primary: #000000 !important;
+  --border-radius: 0.4rem !important;
+
+  position: relative !important;
+  margin: 0 auto !important;
+  background-color: var(--bg-primary) !important;
+  aspect-ratio: 720 / 1280 !important;
+  width: 100% !important;
+  max-width: 720px !important;
+  overflow: hidden !important;
+}
+
+.inquiry-title {
+  position: absolute !important;
+  left: 50% !important;
+  top: -5% !important;
+  transform: translateX(-50%) !important;
+  width: 100% !important;
+}
+
+.inquiry-title img {
+  width: 100% !important;
+  height: auto !important;
+  display: block !important;
+}
+
+.inquiry-form-wrapper {
+  position: absolute !important;
+  top: 15% !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: 90% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.8rem !important;
+  color: var(--text-primary) !important;
+  font-size: 0.75rem !important;
+}
+
+.form-group {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.1rem !important;
+  margin-bottom: 0cm !important;
+}
+
+.form-label {
+  font-size: 0.7rem !important;
+  font-weight: 600 !important;
+  color: var(--text-primary) !important;
+  margin-bottom: 0.1rem !important;
+}
+
+.form-label span[style*="color: #ff0000"],
+.required-mark {
+  color: var(--error-color) !important;
+  margin-left: 0.15rem;
+}
+
+.form-input,
+.form-textarea {
+  border: 2px solid var(--primary-color) !important;
+  border-radius: var(--border-radius) !important;
+  background-color: var(--input-text-box-primary) !important;
+  padding: 0.5rem 0.6rem !important;
+  color: var(--input-text-primary) !important;
+  font-weight: 500 !important;
+  font-size: 1rem !important;
+  font-family: inherit !important;
+}
+
+.form-input::placeholder,
+.form-textarea::placeholder {
+  color: var(--text-secondary) !important;
+}
+
+.form-input:focus,
+.form-textarea:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 255, 153, 0.3)  !important;
+}
+
+.form-textarea {
+  height: 3rem !important;
+  resize: none !important;
+}
+
+.radio-options {
+  display: flex !important;
+  gap: 0.8rem !important;
+  flex-wrap: wrap !important;
+  margin-top: 0.2rem !important;
+}
+
+.radio-label {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.3rem !important;
+  cursor: pointer !important;
+  font-size: 0.7rem !important;
+  color: var(--text-primary) !important;
+  white-space: nowrap !important;
+}
+
+.radio-label input[type="radio"] {
+  accent-color: var(--primary-color) !important;
+  cursor: pointer !important;
+  width: 1rem !important;
+  height: 1rem !important;
+  margin: 0 !important;
+}
+
+.form-checkbox {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.4rem !important;
+  font-size: 0.65rem !important;
+  color: var(--text-primary) !important;
+  cursor: pointer !important;
+}
+
+.form-checkbox input[type="checkbox"] {
+  accent-color: var(--primary-color) !important;
+  cursor: pointer !important;
+  width: 0.9rem !important;
+  height: 0.9rem !important;
+  margin: 0 !important;
+}
+
+.form-submit {
+  background-color: var(--primary-color) !important;
+  color: var(--bg-primary) !important;
+  font-weight: 700 !important;
+  height: 38px !important;
+  border-radius: 0.8rem !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: background-color 0.2s !important;
+  font-size: 0.8rem !important;
+  font-family: inherit !important;
+  display: block !important;
+  align-self:center !important;
+  min-width: 150px !important;
+  margin-top: 0.3rem !important;
+}
+
+.form-submit:hover {
+  background-color: #00ffaa !important;
+}
+
+.form-submit:active {
+  background-color: #00ff88 !important;
+}
+
+.inquiry-robot-left {
+  position: absolute !important;
+  bottom: 5% !important;
+  left: 3% !important;
+  width: 25% !important;
+}
+
+.inquiry-robot-left img {
+  width: 100% !important;
+  height: auto !important;
+  display: block !important;
+}
+
+.inquiry-robot-right {
+  position: absolute !important;
+  bottom: 5% !important;
+  right: 3% !important;
+  width: 25% !important;
+}
+
+.inquiry-robot-right img {
+  width: 100% !important;
+  height: auto !important;
+  display: block !important;
+}

@@ -1,0 +1,142 @@
+body {
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  background-color: var(--gray-1);
+  color: var(--gray-12);
+  transition: background-color 0.3s, color 0.3s;
+}
+
+/* Dark mode styles for main app container */
+.app-container {
+  min-height: screen;
+  background-color: var(--gray-1);
+  color: var(--gray-12);
+  transition: background-color 0.3s, color 0.3s;
+}
+
+:root.dark .app-container {
+  background-color: #0a0a0a;
+  color: #ffffff;
+}
+
+:root:not(.dark) .app-container {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+/* Footer styles */
+.app-footer {
+  border-top: 1px solid;
+  border-color: #e5e5e5;
+  background-color: #f9f9f9 !important;
+  margin-top: 3rem;
+  transition: border-color 0.3s, background-color 0.3s;
+  padding: 2rem 0;
+}
+
+:root.dark .app-footer {
+  border-color: #333333 !important;
+  background-color: #0f0f0f !important;
+}
+
+.footer-section-title {
+  font-weight: 600;
+  margin-bottom: 1rem;
+  transition: color 0.3s;
+  color: #000000 !important;
+}
+
+:root.dark .footer-section-title {
+  color: #ffffff !important;
+}
+
+.footer-text {
+  font-size: 0.875rem;
+  color: #666666 !important;
+  transition: color 0.3s;
+  line-height: 1.6;
+}
+
+.footer-text li {
+  color: #666666 !important;
+}
+
+:root.dark .footer-text,
+:root.dark .footer-text li {
+  color: #b0b0b0 !important;
+}
+
+.app-footer .footer-text {
+  color: #666666 !important;
+}
+
+:root.dark .app-footer .footer-text {
+  color: #b0b0b0 !important;
+}
+
+.app-footer .footer-section-title {
+  color: #000000 !important;
+}
+
+:root.dark .app-footer .footer-section-title {
+  color: #ffffff !important;
+}
+
+.footer-border {
+  border-color: #e5e5e5;
+  color: #666666;
+  transition: border-color 0.3s, color 0.3s;
+}
+
+:root.dark .footer-border {
+  border-color: #333333;
+  color: #999999;
+}
+
+/* 푸터 컨테이너 및 그리드 다크모드 */
+.app-footer .container {
+  background-color: transparent;
+  transition: background-color 0.3s;
+}
+
+:root.dark .app-footer .container {
+  background-color: transparent;
+}
+
+.app-footer > div > div {
+  transition: background-color 0.3s;
+}
+
+:root.dark .app-footer > div > div {
+  background-color: transparent;
+}
+
+.app-footer .grid {
+  transition: background-color 0.3s;
+}
+
+:root.dark .app-footer .grid {
+  background-color: transparent;
+}
+
+.app-footer .grid > div {
+  background-color: transparent;
+  transition: background-color 0.3s;
+}
+
+:root.dark .app-footer .grid > div {
+  background-color: transparent;
+}
+
+/* 카드, 버튼 등 컴포넌트 스타일 */
+.card {
+  border-radius: 1rem;
+  transition: background-color 0.3s, border-color 0.3s;
+}
+
+.btn {
+  font-weight: 600;
+  transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+}
