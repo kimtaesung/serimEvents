@@ -181,3 +181,21 @@ CREATE TABLE IF NOT EXISTS inquiries (
     INDEX idx_status (status),
     INDEX idx_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Mail Log Table (메일 발송 기록 및 IP 관리)
+CREATE TABLE IF NOT EXISTS mail_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    sender_ip VARCHAR(45) NOT NULL,
+    recipient_email VARCHAR(255) NOT NULL,
+    subject VARCHAR(255),
+    content LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    status ENUM('pending', 'sent', 'failed') DEFAULT 'pending',
+    error_message LONGTEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    sent_at TIMESTAMP NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_sender_ip (sender_ip),
+    INDEX idx_recipient (recipient_email),
+    INDEX idx_status (status),
+    INDEX idx_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

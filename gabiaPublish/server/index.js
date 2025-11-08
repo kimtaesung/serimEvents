@@ -2,11 +2,14 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const bodyParser = require('body-parser');
+const fs = require('fs');
+const https = require('https');
 const { initializeAdmin } = require('./database/init-admin');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || (process.env.NODE_ENV === 'production' ? 8080 : 8088);
+const USE_HTTPS = process.env.USE_HTTPS === 'true' || false;
 
 // Middleware
 app.use(cors());
@@ -48,17 +51,54 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, async () => {
-  console.log(`SerimRobo server running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`Gabia hosting mode enabled`);
-  
-  // 관리자 계정 초기화
+const startServer = async () => {
   try {
+    // 관리자 계정 초기화
     await initializeAdmin();
   } catch (error) {
     console.error('Warning: Admin initialization failed. Please check database connection.');
   }
-});
+
+  if (USE_HTTPS) {
+    // HTTPS 서버 시작
+    const certPath = process.env.CERT_PATH || '/app/certs/fullchain.pem';
+    const keyPath = process.env.KEY_PATH || '/app/certs/privkey.pem';
+
+    try {
+      if (!fs.existsSync(certPath) || !fs.existsSync(keyPath)) {
+        console.error(`❌ HTTPS 인증서를 찾을 수 없습니다:`);
+        console.error(`   - 인증서: ${certPath}`);
+        console.error(`   - 키: ${keyPath}`);
+        console.error(`💡 해결 방법:`);
+        console.error(`   1. Docker: 볼륨 마운트 설정 확인`);
+        console.error(`   2. 로컬: USE_HTTPS=false로 설정`);
+        process.exit(1);
+      }
+
+      const options = {
+        cert: fs.readFileSync(certPath),
+        key: fs.readFileSync(keyPath)
+      };
+
+      https.createServer(options, app).listen(PORT, () => {
+        console.log(`🔒 HTTPS 서버 실행 중: https://localhost:${PORT}`);
+        console.log(`환경: ${process.env.NODE_ENV || 'development'}`);
+        console.log(`가비아 호스팅 모드 활성화`);
+      });
+    } catch (error) {
+      console.error('❌ HTTPS 초기화 실패:', error.message);
+      process.exit(1);
+    }
+  } else {
+    // HTTP 서버 시작
+    app.listen(PORT, () => {
+      console.log(`SerimRobo 서버 실행 중: http://localhost:${PORT}`);
+      console.log(`환경: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`가비아 호스팅 모드 활성화`);
+    });
+  }
+};
+
+startServer();
 
 module.exports = app;
