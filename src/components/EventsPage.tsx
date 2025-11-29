@@ -65,7 +65,7 @@ export function EventsPage() {
     <div className="events-page-container">
       <div className="events-page-content">
         {eventImages.map((image, index) => (
-          <Card key={image.id} className="events-image-card">
+          <Card key={image.id} className="events-image-card !bg-transparent !border-none">
             {index === 16 ? (
               <div ref={inquiryRef}>
                 <InquirySample />

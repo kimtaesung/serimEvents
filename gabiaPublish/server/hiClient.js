@@ -1,6 +1,6 @@
 const axios = require('axios');
 const request = require('request');
-require('dotenv').config({ path: '../gabiaPublish/.env' });
+const nodemailer = require('nodemailer');
 
 class HiWorksClient {
   constructor() {
@@ -10,9 +10,48 @@ class HiWorksClient {
     this.senderPhone = process.env.KAKAO_SENDER_PHONE;
     // 카카오 알림톡 전송 활성화 여부 (환경변수: 'true' 또는 'false' 문자열)
     this.enableKakaoNotification = process.env.ENABLE_KAKAO_NOTIFICATION === 'true';
+    
     // 메일 발송 설정
+    this.mailProvider = process.env.MAIL_PROVIDER || 'gmail'; // 'gmail' 또는 'hiworks'
     this.mailUserId = process.env.HIWORKS_MAIL_USER_ID;
     this.mailCooldown = parseInt(process.env.MAIL_SEND_COOLDOWN_MINUTES || '10') * 60 * 1000; // 기본값: 10분
+
+    // Gmail SMTP 설정
+    this.gmailEmail = process.env.GMAIL_EMAIL;
+    this.gmailAppPassword = process.env.GMAIL_APP_PASSWORD;
+    this.gmailSenderEmail = process.env.GMAIL_SENDER_EMAIL || process.env.GMAIL_EMAIL; // 메일 발송자 주소
+
+    // Gmail Transporter 초기화
+    if (this.mailProvider === 'gmail') {
+      this.initializeGmailTransporter();
+    }
+  }
+
+  /**
+   * Gmail Transporter 초기화
+   */
+  initializeGmailTransporter() {
+    if (!this.gmailEmail || !this.gmailAppPassword) {
+      console.warn('[Gmail] Gmail 이메일 또는 앱 비밀번호가 설정되지 않았습니다.');
+      return;
+    }
+
+    this.transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: this.gmailEmail,
+        pass: this.gmailAppPassword
+      }
+    });
+
+    // Transporter 연결 테스트
+    this.transporter.verify((error, success) => {
+      if (error) {
+        console.error('[Gmail] SMTP 연결 실패:', error.message);
+      } else {
+        console.log('[Gmail] SMTP 연결 성공');
+      }
+    });
   }
 
   /**
@@ -66,7 +105,7 @@ class HiWorksClient {
           <body>
             <div class="mail-container">
               <div class="mail-header">
-                <h1>📋 신규 문의 접수</h1>
+                <h1>신규 문의 접수</h1>
               </div>
               <div class="mail-body">
                 ${contentObj.manager_name ? `<div class="info-row"><span class="info-label">성명(상호명):</span> <span class="info-value">${this.escapeHtml(contentObj.manager_name)}</span></div>` : ''}
@@ -134,7 +173,7 @@ class HiWorksClient {
   }
 
   /**
-   * 모든 사원 목록 조회
+   * 모든 사원 목록 조회 (사용자 API)
    * @returns {Promise<Array>} 사원 목록
    */
   async getAllEmployees() {
@@ -156,6 +195,49 @@ class HiWorksClient {
   }
 
   /**
+   * HRM API를 통해 모든 조직원 조회 (email 포함)
+   * @returns {Promise<Array>} 조직원 목록 (email 포함)
+   */
+  async getAllEmployeesFromHRM() {
+    try {
+      console.log('[HRM] 모든 조직원 조회 중 (HRM API)...');
+      
+      const response = await axios.get(`${this.apiUrl}/hrm/v2/organizations`, {
+        headers: this.getHeaders()
+      });
+
+      console.log('[HRM] API 응답:', response.data);
+
+      // 응답 구조 확인
+      if (!response.data || !response.data.entries) {
+        console.log('[HRM] 조회할 조직원이 없습니다.');
+        return [];
+      }
+
+      const entries = response.data.entries;
+      console.log(`[HRM] 총 ${entries.length}명의 조직원 조회됨`);
+
+      // email이 있는 조직원만 필터링
+      const employeesWithEmail = entries.filter(emp => emp.email && emp.email.trim() !== '');
+      
+      console.log(`[HRM] 이메일이 있는 조직원: ${employeesWithEmail.length}명`);
+
+      if (employeesWithEmail.length > 0) {
+        console.log('[HRM] 샘플 조직원:', JSON.stringify(employeesWithEmail[0]));
+      }
+
+      return employeesWithEmail;
+    } catch (error) {
+      console.error('[HRM] 조직원 조회 중 오류:', error.message);
+      if (error.response) {
+        console.error('[HRM] 응답 상태:', error.response.status);
+        console.error('[HRM] 응답 데이터:', error.response.data);
+      }
+      return [];
+    }
+  }
+
+  /**
    * 카카오 알림톡 발송 (단일 수신자)
    * @param {string} phone - 수신자 전화번호
    * @param {Object} templateData - 템플릿 데이터
@@ -168,7 +250,7 @@ class HiWorksClient {
         to: phone,
         from: this.senderPhone,
         template_parameter: templateData,
-        re_send: 'Y', // 실패 시 SMS 재전송
+        re_send: 'Y',
         re_send_subject: '세림로보틱스 신규 문의',
         re_send_message: `신규 문의가 접수되었습니다.\n성명: ${templateData.manager_name}\n연락처: ${templateData.phone_number}\n제품: ${templateData.product_type}`
       };
@@ -193,7 +275,7 @@ class HiWorksClient {
   }
 
   /**
-   * 모든 사원에게 신규 문의 알림 전송
+   * 모든 사원에게 신규 문의 알림 전송 (Kakao)
    * @param {Object} inquiryData - 문의 데이터
    * @param {boolean} sendNotification - 알림 전송 여부 (기본값: true)
    * @returns {Promise<Object>} 전송 결과 요약
@@ -204,7 +286,7 @@ class HiWorksClient {
       const shouldSend = this.enableKakaoNotification && sendNotification;
       
       if (!shouldSend) {
-        console.log('⏭️  카카오 알림톡 전송 건너뜀 (환경변수 또는 사용자 설정으로 비활성화됨)');
+        console.log('[Kakao] 카카오 알림톡 전송 건너뜀 (환경변수 또는 사용자 설정으로 비활성화됨)');
         return {
           success: true,
           message: '카카오 알림톡 전송이 비활성화되었습니다.',
@@ -213,13 +295,13 @@ class HiWorksClient {
         };
       }
 
-      console.log('📢 신규 문의 알림 전송 시작...');
+      console.log('[Kakao] 신규 문의 알림 전송 시작...');
       
-      // 1. 모든 사원 목록 조회
+      // 1. 사용자 API에서 모든 구성원 목록 조회
       const employees = await this.getAllEmployees();
       
       if (employees.length === 0) {
-        console.log('⚠️ 알림을 받을 사원이 없습니다.');
+        console.log('[Kakao] 알림을 받을 사원이 없습니다.');
         return {
           success: false,
           message: '알림을 받을 사원이 없습니다.',
@@ -227,7 +309,7 @@ class HiWorksClient {
         };
       }
 
-      console.log(`👥 총 ${employees.length}명의 사원에게 알림 전송 중...`);
+      console.log(`[Kakao] 총 ${employees.length}명의 구성원에게 알림 전송 중...`);
 
       // 2. 템플릿 데이터 준비
       const templateData = {
@@ -239,10 +321,10 @@ class HiWorksClient {
         inquiry_time: new Date().toLocaleString('ko-KR')
       };
 
-      // 3. 모든 사원에게 개별 전송
+      // 3. 모든 구성원에게 개별 전송 (휴대폰 번호 필터링)
       const sendPromises = employees
-        .filter(employee => employee.mobile_no) // 휴대폰 번호가 있는 사원만
-        .map(employee => this.sendKakaoMessage(employee.mobile_no, templateData));
+        .filter(employee => employee.cell)
+        .map(employee => this.sendKakaoMessage(employee.cell, templateData));
 
       const results = await Promise.allSettled(sendPromises);
       
@@ -254,7 +336,7 @@ class HiWorksClient {
         result.status === 'rejected' || !result.value.success
       );
 
-      console.log(`✅ 전송 완료: 성공 ${successful.length}건, 실패 ${failed.length}건`);
+      console.log(`[Kakao] 전송 완료: 성공 ${successful.length}건, 실패 ${failed.length}건`);
 
       return {
         success: true,
@@ -266,7 +348,7 @@ class HiWorksClient {
       };
 
     } catch (error) {
-      console.error('❌ 전체 알림 전송 중 오류:', error.message);
+      console.error('[Kakao] 전체 알림 전송 중 오류:', error.message);
       return {
         success: false,
         message: `알림 전송 중 오류가 발생했습니다: ${error.message}`,
@@ -300,17 +382,40 @@ class HiWorksClient {
   }
 
   /**
+   * 메일 제공자 설정에 따라 메일 발송 (Gmail 또는 HiWorks)
+   * @param {Object} mailData - 메일 데이터
+   * @param {string} mailData.to - 수신자 이메일
+   * @param {string} mailData.subject - 메일 제목
+   * @param {string} mailData.content - 메일 내용
+   * @param {string} senderIp - 발신자 IP
+   * @param {Object} db - 데이터베이스 어댑터
+   * @returns {Promise<Object>} 발송 결과
+   */
+  async sendMail(mailData, senderIp, db) {
+    if (this.mailProvider === 'gmail') {
+      return this.sendMailViaGmail(mailData, senderIp, db);
+    } else if (this.mailProvider === 'hiworks') {
+      return this.sendMailViaHiWorks(mailData, senderIp, db);
+    } else {
+      return {
+        success: false,
+        message: `알 수 없는 메일 제공자입니다: ${this.mailProvider}`
+      };
+    }
+  }
+
+  /**
    * API 연결 테스트
    * @returns {Promise<boolean>} 연결 성공 여부
    */
   async testConnection() {
     try {
       const employees = await this.getAllEmployees();
-      console.log('✅ 하이웍스 API 연결 성공');
-      console.log(`📊 조회된 사원 수: ${employees.length}명`);
+      console.log('✓ 하이웍스 API 연결 성공');
+      console.log(`  조회된 사원 수: ${employees.length}명`);
       return true;
     } catch (error) {
-      console.error('❌ 하이웍스 API 연결 실패:', error.message);
+      console.error('✗ 하이웍스 API 연결 실패:', error.message);
       return false;
     }
   }
@@ -357,7 +462,7 @@ class HiWorksClient {
         return { canSend: true, remainingTime: 0 };
       }
 
-      const remainingTime = Math.ceil((this.mailCooldown - timeDiff) / 1000); // 초 단위
+      const remainingTime = Math.ceil((this.mailCooldown - timeDiff) / 1000);
       return { canSend: false, remainingTime };
     } catch (error) {
       console.error('메일 발송 가능 여부 확인 실패:', error.message);
@@ -366,26 +471,185 @@ class HiWorksClient {
   }
 
   /**
-   * 하이웍스 메일 API를 통해 메일 발송
+   * 모든 사원에게 메일 발송
    * @param {Object} mailData - 메일 데이터
-   * @param {string} mailData.to - 수신자 이메일
-   * @param {string} mailData.cc - CC 이메일 (선택사항)
-   * @param {string} mailData.bcc - BCC 이메일 (선택사항)
    * @param {string} mailData.subject - 메일 제목
    * @param {string} mailData.content - 메일 내용
    * @param {string} senderIp - 발신자 IP
    * @param {Object} db - 데이터베이스 어댑터
    * @returns {Promise<Object>} 발송 결과
    */
-  async sendMail(mailData, senderIp, db) {
+  async sendMailToAllEmployees(mailData, senderIp, db) {
     try {
-      console.log(`📧 메일 발송 시작 - 수신자: ${mailData.to}, 발신자IP: ${senderIp}`);
+      console.log('[Mail] 모든 구성원에게 메일 발송 시작...');
+
+      // 1. HRM API에서 모든 조직원 목록 조회 (email 포함)
+      const employees = await this.getAllEmployeesFromHRM();
+
+      if (employees.length === 0) {
+        console.log('[Mail] 메일을 받을 구성원이 없습니다.');
+        return {
+          success: false,
+          message: '메일을 받을 구성원이 없습니다.',
+          totalEmployees: 0,
+          successCount: 0,
+          failureCount: 0,
+          results: []
+        };
+      }
+
+      console.log(`[Mail] 총 ${employees.length}명의 조직원 조회 성공`);
+
+      // 2. 모든 조직원에게 개별 메일 발송 (병렬 처리)
+      const sendPromises = employees.map(employee => {
+        const employeeMailData = {
+          ...mailData,
+          to: employee.email
+        };
+        return this.sendMail(employeeMailData, senderIp, db);
+      });
+
+      const results = await Promise.allSettled(sendPromises);
+
+      // 3. 결과 집계
+      const successful = results.filter(result =>
+        result.status === 'fulfilled' && result.value.success
+      );
+      const failed = results.filter(result =>
+        result.status === 'rejected' || !result.value.success
+      );
+
+      console.log(`[Mail] 메일 발송 완료: 성공 ${successful.length}건, 실패 ${failed.length}건`);
+
+      return {
+        success: true,
+        message: `메일 발송 완료 (성공: ${successful.length}건, 실패: ${failed.length}건)`,
+        totalEmployees: employees.length,
+        successCount: successful.length,
+        failureCount: failed.length,
+        results: results.map(result => result.value || result.reason)
+      };
+    } catch (error) {
+      console.error('[Mail] 전체 메일 발송 중 오류:', error.message);
+      return {
+        success: false,
+        message: `메일 발송 중 오류가 발생했습니다: ${error.message}`,
+        results: []
+      };
+    }
+  }
+
+  /**
+   * Gmail SMTP로 메일 발송
+   * @param {Object} mailData - 메일 데이터
+   * @param {string} mailData.to - 수신자 이메일
+   * @param {string} mailData.subject - 메일 제목
+   * @param {string} mailData.content - 메일 내용
+   * @param {string} senderIp - 발신자 IP
+   * @param {Object} db - 데이터베이스 어댑터
+   * @returns {Promise<Object>} 발송 결과
+   */
+  async sendMailViaGmail(mailData, senderIp, db) {
+    try {
+      console.log(`[Gmail] 메일 발송 시작 - 수신자: ${mailData.to}`);
+
+      if (!this.transporter) {
+        return {
+          success: false,
+          message: 'Gmail SMTP가 설정되지 않았습니다.'
+        };
+      }
+
+      // 1. 메일 내용을 HTML로 포맷팅
+      const formattedContent = this.formatMailContent(mailData.content);
+
+      // 2. 메일 로그 DB 기록 (발송 전)
+      let contentForDb = '';
+      if (typeof mailData.content === 'string') {
+        contentForDb = mailData.content;
+      } else if (typeof mailData.content === 'object' && mailData.content !== null) {
+        contentForDb = JSON.stringify(mailData.content);
+      } else {
+        contentForDb = String(mailData.content || '');
+      }
+
+      const logInsertQuery = `
+        INSERT INTO mail_log 
+        (sender_ip, recipient_email, subject, content, status) 
+        VALUES (?, ?, ?, ?, ?)
+      `;
+      const logResult = await db.query(logInsertQuery, [
+        senderIp,
+        mailData.to,
+        mailData.subject || '',
+        contentForDb,
+        'pending'
+      ]);
+      const logId = logResult[0]?.insertId;
+
+      // 3. Gmail SMTP를 통해 메일 발송
+      const mailOptions = {
+        from: this.gmailSenderEmail,
+        to: mailData.to,
+        subject: mailData.subject,
+        html: formattedContent
+      };
+
+      const info = await this.transporter.sendMail(mailOptions);
+
+      // 4. 발송 성공 시 DB 업데이트
+      const updateQuery = `
+        UPDATE mail_log SET status = 'sent', sent_at = NOW() WHERE id = ?
+      `;
+      await db.query(updateQuery, [logId]);
+
+      console.log(`[Gmail] 메일 발송 성공 - 수신자: ${mailData.to}, 메시지ID: ${info.messageId}`);
+      return {
+        success: true,
+        message: '메일이 성공적으로 발송되었습니다.',
+        logId,
+        messageId: info.messageId
+      };
+
+    } catch (error) {
+      console.error('[Gmail] 메일 발송 중 오류:', error.message);
+      
+      try {
+        const updateQuery = `
+          UPDATE mail_log SET status = 'failed', error_message = ? WHERE id = ?
+        `;
+        await db.query(updateQuery, [error.message, logId]);
+      } catch (dbError) {
+        console.error('[Gmail] DB 업데이트 실패:', dbError.message);
+      }
+
+      return {
+        success: false,
+        message: `메일 발송 중 오류가 발생했습니다: ${error.message}`,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * 하이웍스 메일 API를 통해 메일 발송
+   * @param {Object} mailData - 메일 데이터
+   * @param {string} mailData.to - 수신자 이메일
+   * @param {string} mailData.subject - 메일 제목
+   * @param {string} mailData.content - 메일 내용
+   * @param {string} senderIp - 발신자 IP
+   * @param {Object} db - 데이터베이스 어댑터
+   * @returns {Promise<Object>} 발송 결과
+   */
+  async sendMailViaHiWorks(mailData, senderIp, db) {
+    try {
+      console.log(`[HiWorks] 메일 발송 시작 - 수신자: ${mailData.to}`);
 
       // 1. 메일 발송 가능 여부 확인
       const { canSend, remainingTime } = await this.canSendMail(senderIp, db);
       
       if (!canSend) {
-        console.log(`⏳ 메일 발송 대기 중 - 남은 시간: ${remainingTime}초`);
+        console.log(`[HiWorks] 발송 대기 중 - 남은 시간: ${remainingTime}초`);
         return {
           success: false,
           message: `메일을 보낸 지 10분이 경과하지 않았습니다. ${remainingTime}초 후 다시 시도해주세요.`,
@@ -395,7 +659,6 @@ class HiWorksClient {
       }
 
       // 2. 메일 로그 DB 기록 (발송 전)
-      // content가 JSON 문자열인 경우 그대로, 아니면 변환
       let contentForDb = '';
       if (typeof mailData.content === 'string') {
         contentForDb = mailData.content;
@@ -432,8 +695,6 @@ class HiWorksClient {
         formData: {
           'to': mailData.to,
           'user_id': this.mailUserId,
-          'cc': mailData.cc || '',
-          'bcc': mailData.bcc || '',
           'subject': mailData.subject,
           'content': formattedContent,
           'save_sent_mail': 'Y'
@@ -447,19 +708,15 @@ class HiWorksClient {
               throw error;
             }
 
-            console.log(`📧 API 응답: ${body}`);
-            console.log(`📧 응답 상태 코드: ${response.statusCode}`);
+            console.log(`[HiWorks] API 응답: ${body}`);
 
             // JSON 응답 파싱 시도
             let responseData = {};
             try {
               responseData = typeof body === 'string' ? JSON.parse(body) : body;
             } catch (e) {
-              console.log('JSON 파싱 실패, 문자열로 처리');
               responseData = { msg: body, raw: body };
             }
-
-            console.log(`📧 파싱된 응답: ${JSON.stringify(responseData)}`);
 
             // 발송 성공 조건 확인
             const isSuccess = 
@@ -474,7 +731,7 @@ class HiWorksClient {
               `;
               await db.query(updateQuery, [logId]);
 
-              console.log(`✅ 메일 발송 성공 - 수신자: ${mailData.to}`);
+              console.log(`[HiWorks] 메일 발송 성공 - 수신자: ${mailData.to}`);
               resolve({
                 success: true,
                 message: '메일이 성공적으로 발송되었습니다.',
@@ -490,7 +747,7 @@ class HiWorksClient {
             `;
             await db.query(updateQuery, [errorMsg, logId]);
 
-            console.error(`❌ 메일 발송 실패: ${errorMsg}`);
+            console.error(`[HiWorks] 메일 발송 실패: ${errorMsg}`);
             resolve({
               success: false,
               message: `메일 발송 실패: ${errorMsg}`,
@@ -499,16 +756,15 @@ class HiWorksClient {
             });
 
           } catch (error) {
-            console.error('❌ 메일 발송 중 오류:', error.message);
+            console.error('[HiWorks] 메일 발송 중 오류:', error.message);
             
-            // 오류 로그 업데이트
             try {
               const updateQuery = `
                 UPDATE mail_log SET status = 'failed', error_message = ? WHERE id = ?
               `;
               await db.query(updateQuery, [error.message, logId]);
             } catch (dbError) {
-              console.error('DB 업데이트 실패:', dbError.message);
+              console.error('[HiWorks] DB 업데이트 실패:', dbError.message);
             }
 
             resolve({
@@ -521,7 +777,7 @@ class HiWorksClient {
         });
       });
     } catch (error) {
-      console.error('❌ 메일 발송 준비 중 오류:', error.message);
+      console.error('[HiWorks] 메일 발송 준비 중 오류:', error.message);
       return {
         success: false,
         message: `메일 발송 준비 중 오류가 발생했습니다: ${error.message}`,

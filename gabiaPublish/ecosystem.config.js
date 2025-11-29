@@ -39,7 +39,9 @@ module.exports = {
         ENABLE_KAKAO_NOTIFICATION: process.env.ENABLE_KAKAO_NOTIFICATION || 'false',
         // 하이웍스 메일 발송 설정
         HIWORKS_MAIL_USER_ID: process.env.HIWORKS_MAIL_USER_ID || 'admin',
-        MAIL_SEND_COOLDOWN_MINUTES: process.env.MAIL_SEND_COOLDOWN_MINUTES || '10'
+        MAIL_SEND_COOLDOWN_MINUTES: process.env.MAIL_SEND_COOLDOWN_MINUTES || '10',
+        // 하이웍스 조직연동 API 설정
+        HIWORKS_ORG_API_TOKEN: process.env.HIWORKS_ORG_API_TOKEN || 'fa292a24aa7f7d36e1a3b372c0e21b33'
       },
       // 로그 설정
       log_date_format: 'YYYY-MM-DD HH:mm Z',

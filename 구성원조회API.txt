@@ -1,0 +1,48 @@
+GET
+구성원 조회
+https://api.hiworks.com/office/org/member?extKey=
+구성원을 조회합니다.
+
+파라미터
+Key	Required	Description
+extKey	필수	구성원의 외부키를 입력합니다.
+HEADERS
+Authorization
+Bearer {{linkAuth_token}}
+
+Content-Type
+application/json
+
+PARAMS
+extKey
+
+구성원 조회 curl
+curl --location -g '{{url}}.hiworks.com/office/org/member?extKey=' \
+--header 'Authorization: Bearer {{linkAuth_token}}' \
+--header 'Content-Type: application/json'
+
+구성원 조회 respose
+{
+  "code": "SUC",
+  "message": "",
+  "data": [
+    {
+      "user_id": "",
+      "user_name": "홍길동",
+      "extKey": "ext_member_0001",
+      "email": "test_001@gabia.com",
+      "phone": "010-3333-3333",
+      "cell": "010-4444-4444",
+      "organizations": []
+    },
+    {
+      "user_id": "",
+      "user_name": "김테스트0002",
+      "extKey": "ext_member_0002",
+      "email": "test_001@gabia.com",
+      "phone": "010-3333-3333",
+      "cell": "010-4444-4444",
+      "organizations": []
+    },
+  ]
+}

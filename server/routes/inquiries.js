@@ -142,25 +142,22 @@ router.post('/', async (req, res) => {
         // 2. 메일 자동 전송
         try {
           console.log('📧 메일 자동 전송 시작...');
-          const adminEmail = process.env.ADMIN_EMAIL || 'admin@serimrobo.com';
+          
           const senderIp = '127.0.0.1'; // 백그라운드 작업이므로 내부 IP 사용
 
           // content를 JSON 문자열로 미리 변환
           const mailContentJson = JSON.stringify(inquiryData);
 
+          // 메일 데이터 준비
           const mailData = {
-            to: adminEmail,
             subject: `[신규 문의] ${manager_name}님으로부터 문의가 접수되었습니다.`,
-            content: mailContentJson // 문자열로 전달
+            content: mailContentJson
           };
 
-          const mailResult = await hiWorksClient.sendMail(mailData, senderIp, db);
+          // 모든 사원에게 메일 발송
+          const mailResult = await hiWorksClient.sendMailToAllEmployees(mailData, senderIp, db);
 
-          if (mailResult.success) {
-            console.log('✅ 메일 발송 완료:', mailResult.message);
-          } else {
-            console.warn('⚠️ 메일 발송 실패:', mailResult.message);
-          }
+          console.log(`✅ 메일 발송 완료: 성공 ${mailResult.successCount}건, 실패 ${mailResult.failureCount}건`);
         } catch (mailError) {
           console.error('❌ 메일 발송 중 예외 발생:', mailError.message);
         }

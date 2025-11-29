@@ -196,23 +196,27 @@ export default function InquiryForm() {
           />
           <span>개인정보 보호정책에 따라 개인 데이터를 공유하는 데 동의합니다.</span>
         </label>
-
-        {/* 제출 버튼 */}
-        <button
-          type="submit"
-          className="form-submit"
-        >
-          문의하기
-        </button>
+        <table className="form-submit-table">
+          <tbody>
+            <tr>
+              <td className="robot-cell-left">
+                <img src={LeftBot} alt="왼쪽 로봇" />
+              </td>
+              <td className="submit-cell">
+                <button
+                  type="submit"
+                  className="form-submit"
+                >
+                  문의하기
+                </button>
+              </td>
+              <td className="robot-cell-right">
+                <img src={RightBot} alt="오른쪽 로봇" />
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </form>
-
-      {/* 좌우 로봇 */}
-      <div className="inquiry-robot-left">
-        <img src={LeftBot} alt="왼쪽 로봇" />
-      </div>
-      <div className="inquiry-robot-right">
-        <img src={RightBot} alt="오른쪽 로봇" />
-      </div>
     </div>
   )
 }
