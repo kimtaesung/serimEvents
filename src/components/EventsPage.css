@@ -89,8 +89,10 @@
 
   .events-image {
     width: 100%;
-    height: 100%;
+    height: auto;
+    aspect-ratio: 720 / 1280;
     object-fit: scale-down;
+    display: block;
   }
 }
 
@@ -129,9 +131,56 @@
 
   .events-image {
     width: 100%;
-    height: 100%;
-    object-fit:contain;
+    height: auto;
+    aspect-ratio: 720 / 1280;
+    object-fit: contain;
+    display: block;
   }
+}
+
+/* 이미지 래퍼 및 하단 문의하기(도입문의/시연문의 등) 클릭 버튼 영역 */
+.events-image-wrapper {
+  position: relative;
+  width: 100%;
+  display: block;
+}
+
+.events-cta-hotspot {
+  position: absolute;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  z-index: 10;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  padding: 0;
+}
+
+/* 1~5, 10번 이미지: 둥근 캡슐형 버튼 (도입문의, 무료시연 문의, 무료체험 문의, 견적 문의, 렌탈 문의) */
+.events-cta-pill {
+  left: 36.2%;
+  top: 90.2%;
+  width: 27.6%;
+  height: 4.4%;
+  border-radius: 9999px;
+}
+
+/* 6~9번 이미지: 티켓형 버튼 (이벤트 바로가기) */
+.events-cta-ticket {
+  left: 33.8%;
+  top: 89.8%;
+  width: 32.4%;
+  height: 7.2%;
+  border-radius: 8px;
+}
+
+.events-cta-hotspot:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0 18px rgba(0, 255, 153, 0.7);
+  transform: scale(1.03);
+}
+
+.events-cta-hotspot:active {
+  transform: scale(0.97);
 }
 
 

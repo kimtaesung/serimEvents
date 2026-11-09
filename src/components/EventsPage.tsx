@@ -3,6 +3,20 @@ import './EventsPage.css';
 import InquirySample from './InquirySample';
 import { useRef, useEffect } from 'react';
 
+// 이미지별 하단 문의 버튼 설정 (1~10번 이미지)
+const CTA_BUTTON_CONFIG: Record<number, { label: string; type: 'pill' | 'ticket' }> = {
+  1: { label: '도입문의', type: 'pill' },
+  2: { label: '무료시연 문의', type: 'pill' },
+  3: { label: '무료체험 문의', type: 'pill' },
+  4: { label: '견적 문의', type: 'pill' },
+  5: { label: '렌탈 문의', type: 'pill' },
+  6: { label: '이벤트 바로가기', type: 'ticket' },
+  7: { label: '이벤트 바로가기', type: 'ticket' },
+  8: { label: '이벤트 바로가기', type: 'ticket' },
+  9: { label: '이벤트 바로가기', type: 'ticket' },
+  10: { label: '도입 문의', type: 'pill' },
+};
+
 // 동적으로 이미지 import
 const eventImages = Array.from({ length: 17 }, (_, i) => {
   const imageNum = i + 1;
@@ -10,39 +24,41 @@ const eventImages = Array.from({ length: 17 }, (_, i) => {
     id: imageNum,
     src: new URL(`../assets/events/${imageNum}.png`, import.meta.url).href,
     alt: `Event ${imageNum}`,
+    cta: CTA_BUTTON_CONFIG[imageNum],
   };
 });
 
 export function EventsPage() {
+  const containerRef = useRef<HTMLDivElement>(null);
   const inquiryRef = useRef<HTMLDivElement>(null);
   const drawerButtonRef = useRef<HTMLButtonElement>(null);
 
   const scrollToInquiry = () => {
-    if (inquiryRef.current) { 
-      // 컨테이너의 맨 하단으로 스크롤
-      const container = inquiryRef.current.closest('.events-page-container') as HTMLElement;
-      if (container) {
-        // 마지막 카드의 위치로 스크롤
-        const lastCard = container.querySelector('.events-image-card:last-child') as HTMLElement;
-        if (lastCard) {
-          lastCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          
-          // 추가 스크롤: 페이지 끝까지 더 내리기
-          setTimeout(() => {
-            const scrollHeight = document.documentElement.scrollHeight;
-            window.scrollBy({ top: scrollHeight, behavior: 'smooth' });
-          }, 500);
+    if (inquiryRef.current) {
+      inquiryRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    if (containerRef.current) {
+      setTimeout(() => {
+        if (containerRef.current) {
+          containerRef.current.scrollTo({
+            top: containerRef.current.scrollHeight,
+            behavior: 'smooth',
+          });
         }
-      }
+      }, 300);
     }
   };
 
   useEffect(() => {
+    const container = containerRef.current;
     const handleScroll = () => {
-      // 현재 스크롤 위치 + 윈도우 높이가 거의 페이지 끝에 도달했는지 확인
-      const scrollPosition = window.scrollY + window.innerHeight;
-      const pageHeight = document.documentElement.scrollHeight;
-      
+      const scrollPosition = container
+        ? container.scrollTop + container.clientHeight
+        : window.scrollY + window.innerHeight;
+      const pageHeight = container
+        ? container.scrollHeight
+        : document.documentElement.scrollHeight;
+
       // 페이지 끝에서 100px 이내일 때 숨김
       const atBottom = scrollPosition >= pageHeight - 100;
 
@@ -57,26 +73,43 @@ export function EventsPage() {
       }
     };
 
+    container?.addEventListener('scroll', handleScroll);
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => {
+      container?.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('scroll', handleScroll);
+    };
   }, []);
 
   return (
-    <div className="events-page-container">
+    <div ref={containerRef} className="events-page-container">
       <div className="events-page-content">
         {eventImages.map((image, index) => (
           <Card key={image.id} className="events-image-card !bg-transparent !border-none">
             {index === 16 ? (
-              <div ref={inquiryRef}>
+              <div ref={inquiryRef} id="inquiry-section">
                 <InquirySample />
               </div>
             ) : (
-              <img
-                src={image.src}
-                alt={image.alt}
-                className="events-image"
-                loading="lazy"
-              />
+              <div className="events-image-wrapper">
+                <img
+                  src={image.src}
+                  alt={image.alt}
+                  className="events-image"
+                  loading={index < 2 ? 'eager' : 'lazy'}
+                />
+                {image.cta && (
+                  <button
+                    type="button"
+                    onClick={scrollToInquiry}
+                    className={`events-cta-hotspot ${
+                      image.cta.type === 'ticket' ? 'events-cta-ticket' : 'events-cta-pill'
+                    }`}
+                    aria-label={image.cta.label}
+                    title={`${image.cta.label} (하단 문의하기로 이동)`}
+                  />
+                )}
+              </div>
             )}
           </Card>
         ))}
