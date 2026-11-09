@@ -5,7 +5,13 @@ import TitleImage from "../assets/events/17_top.png"
 import "./InquirySample.css"
 import { useState } from "react"
 
+const TARGET_EMAIL = 'serimrobotics01@gmail.com';
+const INQUIRY_ENDPOINT =
+  import.meta.env.VITE_INQUIRY_WEBHOOK_URL ||
+  `https://formsubmit.co/ajax/${TARGET_EMAIL}`;
+
 export default function InquiryForm() {
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     manager_name: '',
     phone_number: '',
@@ -13,15 +19,29 @@ export default function InquiryForm() {
     product_type: '청소로봇',
     consultation_contents: '',
     has_agreement: false
-  });  const handleSubmit = (e: React.FormEvent) => {
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.has_agreement) {
       alert('개인정보 보호정책에 동의해주세요.');
       return;
     }
 
-    // 데이터를 db inquiries테이블에 저장
-    const inquiryData = {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
+    const payload = {
+      _subject: `[신규 문의] ${formData.manager_name}님으로부터 문의가 접수되었습니다. (${formData.product_type})`,
+      _template: 'table',
+      _captcha: 'false',
+      '성명(상호명)': formData.manager_name,
+      '연락처': formData.phone_number,
+      '소재지': formData.manager_address || '정보 없음',
+      '문의제품': formData.product_type || '정보 없음',
+      '문의사항': formData.consultation_contents || '문의 내용 없음',
+      '개인정보동의': formData.has_agreement ? '동의함' : '미동의',
+      // 웹훅(Google Apps Script 등) 연동 호환용 영문 필드
       manager_name: formData.manager_name,
       phone_number: formData.phone_number,
       manager_address: formData.manager_address,
@@ -29,41 +49,38 @@ export default function InquiryForm() {
       consultation_contents: formData.consultation_contents,
       has_agreement: formData.has_agreement
     };
-    
-    // api로 전송하는 부분 (예: fetch 사용)
-    fetch('/api/inquiries', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(inquiryData)
-    })
-    .then(response => {
-      console.log('📤 Response status:', response.status);
-      if (response.ok) {
-        return response.json().then(data => {
-          console.log('✅ Success response:', data);
-          alert('문의가 접수되었습니다.');
-          setFormData({
-            manager_name: '',
-            phone_number: '',
-            manager_address: '',
-            product_type: '청소로봇',
-            consultation_contents: '',
-            has_agreement: false
-          });
+
+    try {
+      const response = await fetch(INQUIRY_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (response.ok && data.success !== 'false' && data.success !== false) {
+        alert('문의가 접수되었습니다.');
+        setFormData({
+          manager_name: '',
+          phone_number: '',
+          manager_address: '',
+          product_type: '청소로봇',
+          consultation_contents: '',
+          has_agreement: false
         });
       } else {
-        return response.json().then(data => {
-          console.error('❌ Error response:', data);
-          alert('문의 접수에 실패했습니다. 다시 시도해주세요.');
-        });
+        console.error('❌ Error response:', data);
+        alert('문의 접수에 실패했습니다. 다시 시도해주세요.');
       }
-    })
-    .catch(error => {
+    } catch (error) {
       console.error('❌ Error submitting form:', error);
       alert('네트워크 오류가 발생했습니다.');
-    });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -206,8 +223,9 @@ export default function InquiryForm() {
                 <button
                   type="submit"
                   className="form-submit"
+                  disabled={isSubmitting}
                 >
-                  문의하기
+                  {isSubmitting ? '전송 중...' : '문의하기'}
                 </button>
               </td>
               <td className="robot-cell-right">
